@@ -7,10 +7,10 @@ mtpi <- function(dem){
             sum(x) / length(x)
       }
       fw <- function(radius){
-            w <- focalWeight(dem, radius / 111.1, fillNA = T)
+            w <- focalWeight(dem, radius / 111.1, fillNA = T) # 111.1 km/deg latitude
             w / w
       }
-      (dem * 3 - focal(dem, fw(.5), fun, pad = T) - # 111.1 km/deg latitude
+      (dem * 3 - focal(dem, fw(.5), fun, pad = T) -
                   focal(dem, fw(.225), fun, pad = T) -
                   focal(dem, fw(.1), fun, pad = T)) / 3
 }
@@ -38,7 +38,7 @@ windex <- function(ne, terr){
       }
       windiff <- pi - anglediff(raster::atan2(wind$wv, wind$wu), # downwind direction,
                                 raster::atan2(ne$northness, ne$eastness)) # downslope direction
-      windward <- cos(windiff) * sin(terr$slope) * wind$waniso# / mean(wind$waniso)
+      windward <- cos(windiff) * sin(terr$slope) * wind$waniso / 0.14896 # 0.14896 is mean FIA anisotropy
       windward
 }
 
@@ -50,7 +50,7 @@ macroclimate <- function(dem){
       clim <- stack(f[!grepl("xml", f)])
       names(clim) <- paste0("bio", c(1, 12, 5, 6))
 
-      # resample with bilinear interpolation
+      # resample with bilinear interpolation (over an expanded area to avoid edge effects)
       clim <- crop(clim, extent(dem) * 3)
       climate <- crop(resample(clim, dem), dem)
       climate
@@ -73,8 +73,8 @@ tensor_splines <- function(x, y, xbounds = NULL, ybounds = NULL,
 }
 
 get_deltas <- function(md, # model metadata
-                       g,
-                       samples){ # macroclimate data for which to predict deltas
+                       g, # predictor data
+                       samples){ # path to cmdstanr output csv
 
       log10inc <- function(x){ # change in log10 precip
             y <- rnorm(1)
@@ -92,7 +92,6 @@ get_deltas <- function(md, # model metadata
       dmv <- d$mv
       spid <- d$spid
       dmd$sp_id <- as.integer(factor(dmd$species))
-      # dmd <- dplyr::left_join(dmd, select(spid, species))
 
       g <- g %>%
             dplyr::select(id, bio1, bio12) %>%
@@ -165,7 +164,7 @@ get_deltas <- function(md, # model metadata
             return(gg)
       }
 
-      nslice <- 100
+      nslice <- 100 # chunk dataset to stay within memory
       pb <- progress_estimated(nslice)
       gg <- g %>%
             mutate(slice = rep(1:nslice, each = ceiling(nrow(.)/nslice))[1:nrow(.)]) %>%
@@ -177,7 +176,6 @@ get_deltas <- function(md, # model metadata
 microclimate <- function(md, d, deltas, macro){
       message("... compiling topoclimate estimates ...")
       ddd <- readRDS(topo_data(basename(md$data_file)))
-      # dmd <- ddd$md
       mv <- ddd$mv
 
       ddd <- d %>%
@@ -223,7 +221,7 @@ microclimate <- function(md, d, deltas, macro){
 
 #' Topoclimate estimates
 #'
-#' This function produces estimates of biologically effective microclimate given a user-suppled digital elevation model (DEM). It is based on a model that leverages North American tree species occurrences as microclimate indicators.
+#' This function produces estimates of biologically effective microclimate given a user-suppled digital elevation model (DEM). It is based on a model that leverages North American tree species occurrences as microclimate indicators. Estimates provided are for the posterior mode (penalized maximum likelihood) for model parameters.
 #'
 #' @param dem RasterLayer representing elevation, in meters. A spatial resolution of 10-30 m is recommended. The dataset must be in the continental US or Canada. DEMs covering areas larger than a small landscape may encounter computational challenges.
 #'

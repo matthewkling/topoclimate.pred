@@ -17,7 +17,7 @@ devtools::install_github("matthewkling/topoclimte.pred")
 
 ## Usage
 
-The package has one main function, `topoclimate()`, produces microclimate estimates based on an elevation raster. Here we'll use it with the example `moonshine` dataset (representing elevation for a landscape near Moonshine Peak in Idaho), which comes loaded with the package.
+The package has one main function, `topoclimate()`, that produces microclimate estimates based on an elevation raster. Here we'll use it with the example `moonshine` dataset (representing elevation for a landscape near Moonshine Peak in Idaho), which comes loaded with the package.
 
 ``` r
 library(topoclimate.pred)

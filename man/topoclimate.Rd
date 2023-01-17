@@ -13,7 +13,7 @@ topoclimate(dem)
 A raster stack of topoclimate variables, including "high_temperature" (in deg C), "low_temperature" (in deg C), and "moisture" (in mm).
 }
 \description{
-This function produces estimates of biologically effective microclimate given a user-suppled digital elevation model (DEM). It is based on a model that leverages North American tree species occurrences as microclimate indicators.
+This function produces estimates of biologically effective microclimate given a user-suppled digital elevation model (DEM). It is based on a model that leverages North American tree species occurrences as microclimate indicators. Estimates provided are for the posterior mode (penalized maximum likelihood) for model parameters.
 }
 \references{
 Kling, Baer, & Ackerly (2023), in review.
