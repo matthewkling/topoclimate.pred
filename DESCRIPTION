@@ -2,8 +2,8 @@ Package: topoclimate.pred
 Title: Biotically Informed Topoclimate Estimates
 Version: 0.0.0.9000
 Authors@R: 
-    person("Kling", "Matthew", , "mattkling@berkeley.edu", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+    person("Kling", "Matthew", email = "mattkling@berkeley.edu", role = c("aut", "cre"))
+Description: This package generates high-resolution estimates of biologically effective microclimate for landscapes across North America, using tree species distributions as climate indicators.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
