@@ -1,5 +1,14 @@
 
 
+#' Multiscle TPI
+#'
+#' This function compuates multiscale topographic position index, sensu Theobald et al. (2015).
+#'
+#' @param dem RasterLayer representing elevation, in meters.
+#'
+#' @return A raster layer of mTPI
+#' @references DM Theobald, D Harrison-Atlas, WB Monahan, CM Albano, Ecologically-relevant maps of landforms and physiographic diversity for climate adaptation planning. PloS One e0143619 (2015)
+#' @export
 mtpi <- function(dem){
       message("... computing elevational position ...")
       fun <- function(x){
@@ -10,11 +19,20 @@ mtpi <- function(dem){
             w <- focalWeight(dem, radius / 111.1, fillNA = T) # 111.1 km/deg latitude
             w / w
       }
-      (dem * 3 - focal(dem, fw(.5), fun, pad = T) -
+      tpi <- (dem * 3 - focal(dem, fw(.5), fun, pad = T) -
                   focal(dem, fw(.225), fun, pad = T) -
                   focal(dem, fw(.1), fun, pad = T)) / 3
+      setNames(tpi, "mTPI")
 }
 
+#' Northness and eastness
+#'
+#' Calculate northness and eastness based on slope and aspect rasters.
+#'
+#' @param terr RasterBrick with layers named "slope" and "aspect", e.g. generated with raster::terrain() function.
+#'
+#' @return A RasterBrick of with northness and eastness variables.
+#' @export
 northeast <- function(terr){
       message("... computing northness & eastness ...")
       northness <- sin(terr$slope) * cos(terr$aspect)
@@ -24,10 +42,20 @@ northeast <- function(terr){
       ne
 }
 
+#' Windward exposure
+#'
+#' Calculate windward exposure based on terrain rasters. Wind data are sourced from Kling & Ackerly (2020).
+#'
+#' @param ne RasterBrick with layers named "northness" and "eastness", e.g. generated with northeast() function.
+#' @param terr Raster object with a layer named "slope", e.g. generated with raster::terrain() function.
+#'
+#' @return A RasterLayer of windward exposure
+#' @references MM Kling, DD Ackerly, Global wind patterns and the vulnerability of wind-dispersed species to climate change. Nature Climate Change 10, 868–875 (2020).
+#' @export
 windex <- function(ne, terr){
       message("... computing windward exposure ...")
 
-      wind <- stack(topo_data("wind.tif")) # (data is from Kling & Ackerly 2020 Nature Climate Change)
+      wind <- stack(topo_data("wind.tif"))
       wind <- setNames(wind, c("wspeed", "wdir", "waniso", "wu", "wv"))
       wind <- projectRaster(wind, terr[[1]])
 
@@ -39,10 +67,19 @@ windex <- function(ne, terr){
       windiff <- pi - anglediff(raster::atan2(wind$wv, wind$wu), # downwind direction,
                                 raster::atan2(ne$northness, ne$eastness)) # downslope direction
       windward <- cos(windiff) * sin(terr$slope) * wind$waniso / 0.14896 # 0.14896 is mean FIA anisotropy
-      windward
+      setNames(windward, "windward_exposure")
 }
 
-macroclimate <- function(dem){
+#' Format macroclimate data
+#'
+#' Prepare a set of macroclimate rasters (biovariables bio12, bio1, bio5, and bio6), resampled and cropped to match resolution of elevation data.
+#'
+#' @param dem RasterLayer representing elevation, in meters.
+#' @param interpolation Interpolation method. Either "bilinear" (default) or "ngb".
+#'
+#' @return A RasterBrick of macroclimate variables
+#' @export
+macroclimate <- function(dem, interpolation = "bilinear"){
       message("... preparing macroclimate ...")
 
       # load CHELSA rasters
@@ -50,9 +87,9 @@ macroclimate <- function(dem){
       clim <- stack(f[!grepl("xml", f)])
       names(clim) <- paste0("bio", c(1, 12, 5, 6))
 
-      # resample with bilinear interpolation (over an expanded area to avoid edge effects)
+      # resample (over an expanded area to avoid edge effects)
       clim <- crop(clim, extent(dem) * 3)
-      climate <- crop(resample(clim, dem), dem)
+      climate <- crop(resample(clim, dem, method = interpolation), dem)
       climate
 }
 
@@ -224,11 +261,12 @@ microclimate <- function(md, d, deltas, macro){
 #' This function produces estimates of biologically effective microclimate given a user-suppled digital elevation model (DEM). It is based on a model that leverages North American tree species occurrences as microclimate indicators. Estimates provided are for the posterior mode (penalized maximum likelihood) for model parameters.
 #'
 #' @param dem RasterLayer representing elevation, in meters. A spatial resolution of 10-30 m is recommended. The dataset must be in the continental US or Canada. DEMs covering areas larger than a small landscape may encounter computational challenges.
+#' @param include_inputs Whether to return intermediate inputs in addition to topoclimate result (default FALSE)
 #'
 #' @return A raster stack of topoclimate variables, including "high_temperature" (in deg C), "low_temperature" (in deg C), and "moisture" (in mm).
 #' @references Kling, Baer, & Ackerly (2023), in review.
 #' @export
-topoclimate <- function(dem){
+topoclimate <- function(dem, include_inputs = FALSE){
 
       message("Calculating biogially effective topoclimate\n",
               "(Note: you can safely ignore any 'attempt to apply non-function' error messages;\n",
@@ -254,6 +292,9 @@ topoclimate <- function(dem){
       md <- readRDS(topo_data("model_metadata.rds"))[2,]
       deltas <- get_deltas(md, d, topo_data("samples_full.csv"))
       topo <- microclimate(md, d, deltas, macro)
+
+      if(include_inputs) topo <- stack(topo, ne, wind, tpi,
+                                       setNames(macro, paste0("macro_", names(macro))))
       return(topo)
 }
 

@@ -4,10 +4,12 @@
 \alias{topoclimate}
 \title{Topoclimate estimates}
 \usage{
-topoclimate(dem)
+topoclimate(dem, include_inputs = FALSE)
 }
 \arguments{
 \item{dem}{RasterLayer representing elevation, in meters. A spatial resolution of 10-30 m is recommended. The dataset must be in the continental US or Canada. DEMs covering areas larger than a small landscape may encounter computational challenges.}
+
+\item{include_inputs}{Whether to return intermediate inputs in addition to topoclimate result (default FALSE)}
 }
 \value{
 A raster stack of topoclimate variables, including "high_temperature" (in deg C), "low_temperature" (in deg C), and "moisture" (in mm).
