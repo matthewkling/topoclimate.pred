@@ -1,7 +1,7 @@
 
 library(raster)
 
-ext <- extent(-165, -50, 25, 70)
+ext <- extent(-155, -52.5, 25, 70)
 
 wind <- crop(rotate(stack("data/wind.tif")), ext)
 writeRaster(wind, "data/wind.tif", overwrite = T)
