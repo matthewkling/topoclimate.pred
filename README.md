@@ -6,8 +6,8 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-This R package generates high-resolution estimates of biologically
-effective microclimate for landscapes across North America, using tree
+This R package generates high-resolution estimates of tree-specific
+bioclimate variables for landscapes across North America, using tree
 species distributions as climate indicators. It accompanies the paper
 Kling, Baer, & Ackerly (currently in review).
 
@@ -16,16 +16,20 @@ Kling, Baer, & Ackerly (currently in review).
 You can install the development version of topoclimate.pred like so:
 
 ``` r
-devtools::install_github("matthewkling/topoclimte.pred")
+devtools::install_github("matthewkling/topoclimate.pred")
 ```
 
 ## Usage
 
 All users need in order to use the package is an elevation raster for a
 landscape of interest in the US or Canada. In this example we’ll use the
-`moonshine` dataset (representing elevation for a landscape near
-Moonshine Peak in Idaho), which comes loaded with the package. Let’s
-make a quick terrain map for this landscape:
+`moonshine` elevation dataset (a 10 m resolution USGS DEM for a
+landscape near Moonshine Peak in Idaho), which comes loaded with the
+package. Note that this is the same dataset used for the downscaling
+example in the paper cited above. To get a look at the data before we
+use it to calculate bioclimate, let’s make a quick terrain map for this
+landscape; we’ll use the `terrain` and `hillShade` functions from the
+`raster` package, which loads with this library:
 
 ``` r
 library(topoclimate.pred)
@@ -36,14 +40,18 @@ plot(hillshade, col = colorRampPalette(c("black", "white"))(50), legend = F)
 <img src="man/figures/README-topo-1.png" width="100%" />
 
 To generate microclimate estimates, we simply pass our elevation raster
-to the `topoclimate()` function. This function generates a set of
-terrain and macroclimate variables for the landscape, and then uses them
-in combination with the maximum likelihood estimates for the fitted
-model (trained on North American tree species distributions) to estimate
-topoclimate:
+to the `bioclimate()` function. This function generates a set of terrain
+and macroclimate variables for the landscape, and then uses them in
+combination with the maximum likelihood estimates for the fitted model
+(trained on North American tree species distributions) to estimate
+bioclimate. The computation takes several minutes for a landscape of
+this extent and resolution, and returns a raster with three layers:
+“high_temp” represents summer maximum temperature in degrees C,
+“low_temp” represents winter minimum temperature in degrees C, and
+“moisture” corresponds to total annual precipitation in mm.
 
 ``` r
-clim <- topoclimate(moonshine)
+clim <- bioclimate(moonshine)
 plot(clim, col = viridis::viridis_pal()(50), nrow = 1)
 ```
 

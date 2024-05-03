@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{mtpi}
 \alias{mtpi}
-\title{Multiscle TPI}
+\title{Multisacle TPI}
 \usage{
 mtpi(dem)
 }

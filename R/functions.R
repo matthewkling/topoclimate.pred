@@ -1,6 +1,6 @@
 
 
-#' Multiscle TPI
+#' Multisacle TPI
 #'
 #' This function compuates multiscale topographic position index, sensu Theobald et al. (2015).
 #'
@@ -211,7 +211,7 @@ get_deltas <- function(md, # model metadata
 }
 
 microclimate <- function(md, d, deltas, macro){
-      message("... compiling topoclimate estimates ...")
+      message("... compiling bioclimate estimates ...")
       ddd <- readRDS(topo_data(basename(md$data_file)))
       mv <- ddd$mv
 
@@ -266,7 +266,7 @@ microclimate <- function(md, d, deltas, macro){
 #' @return A raster stack of topoclimate variables, including "high_temperature" (in deg C), "low_temperature" (in deg C), and "moisture" (in mm).
 #' @references Kling, Baer, & Ackerly (2023), in review.
 #' @export
-topoclimate <- function(dem, include_inputs = FALSE){
+bioclimate <- function(dem, include_inputs = FALSE){
 
       message("Calculating biogially effective topoclimate\n",
               "(Note: you can safely ignore any 'attempt to apply non-function' error messages;\n",
