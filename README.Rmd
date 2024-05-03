@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-This R package generates high-resolution estimates of tree-specific bioclimate variables for landscapes across North America, using tree species distributions as climate indicators. It accompanies the paper Kling, Baer, & Ackerly (currently in review).
+This R package generates high-resolution estimates of tree-specific bioclimate variables for landscapes across North America. It calculates bioclimate based on the fitted model described in Kling et al. 2024 (currently in review), which uses tree species distributions as climate indicators. The outputs are estimates of fine-scale climate patterns as experienced by trees, and may not correspond to microclimate measured using standard approaches. 
 
 ## Installation
 
