@@ -8,11 +8,12 @@
 
 This R package generates high-resolution estimates of tree-specific
 bioclimate variables for landscapes across North America. It calculates
-bioclimate based on the fitted model described in Kling et al. 2024
-(currently in review), which uses tree species distributions as climate
-indicators. The outputs are estimates of fine-scale climate patterns as
-experienced by trees, and may not correspond to microclimate measured
-using standard approaches.
+bioclimate based on the fitted model described in [“A tree’s view of the
+terrain” (Kling, Baer, and Ackerly, 2024,
+Ecography)](https://doi.org/10.1111/ecog.07131), which uses tree species
+distributions as climate indicators. The outputs are estimates of
+fine-scale climate patterns as experienced by trees, and may not
+correspond to microclimate measured using standard approaches.
 
 ## Installation
 
@@ -24,15 +25,16 @@ devtools::install_github("matthewkling/topoclimate.pred")
 
 ## Usage
 
-All users need in order to use the package is an elevation raster for a
-landscape of interest in the US or Canada. In this example we’ll use the
-`moonshine` elevation dataset (a 10 m resolution USGS DEM for a
-landscape near Moonshine Peak in Idaho), which comes loaded with the
-package. Note that this is the same dataset used for the downscaling
-example in the paper cited above. To get a look at the data before we
-use it to calculate bioclimate, let’s make a quick terrain map for this
-landscape; we’ll use the `terrain` and `hillShade` functions from the
-`raster` package, which loads with this library:
+All you need in order to use the package is an elevation raster for a
+landscape of interest in the US or Canada.
+
+Here’s a quick example using the `moonshine` elevation dataset (a 10 m
+resolution USGS DEM for a landscape near Moonshine Peak in Idaho), which
+comes loaded with the package. Note that this is the same dataset used
+for the downscaling example in the paper cited above. To get a look at
+the data before we use it to calculate bioclimate, let’s make a quick
+terrain map for this landscape; we’ll use the `terrain` and `hillShade`
+functions from the `raster` package, which loads with this library:
 
 ``` r
 library(topoclimate.pred)
