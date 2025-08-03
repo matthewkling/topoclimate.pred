@@ -20,8 +20,8 @@ mtpi <- function(dem){
             w / w
       }
       tpi <- (dem * 3 - focal(dem, fw(.5), fun, pad = T) -
-                  focal(dem, fw(.225), fun, pad = T) -
-                  focal(dem, fw(.1), fun, pad = T)) / 3
+                    focal(dem, fw(.225), fun, pad = T) -
+                    focal(dem, fw(.1), fun, pad = T)) / 3
       setNames(tpi, "mTPI")
 }
 
@@ -153,22 +153,35 @@ get_deltas <- function(md, # model metadata
                    clim_var = vars[as.integer(clim_var)]) %>%
             select(-i)
 
-      # generate basis functions
-      z <- tensor_splines(ecdf(dmd[[mod_vars[1]]])(g[[mod_vars[1]]]),
-                          ecdf(dmd[[mod_vars[2]]])(g[[mod_vars[2]]]),
-                          knots = md$s_knots, degree = md$s_degree,
-                          xbounds = 0:1, ybounds = 0:1) %>%
-            as.data.frame() %>% as_tibble()
 
-      # compute deltas from bases
-      result <- select(g, id)
-      for(cv in unique(deltas$clim_var)){
-            for(tv in unique(deltas$topo_var)){
-                  dlt <- filter(deltas, topo_var == tv, clim_var == cv)$value
-                  result[[paste(cv, tv, sep = "_")]] <- apply(z, 1, function(x) sum(x * dlt))
+
+      delt <- function(gs){
+
+            # generate basis functions
+            z <- tensor_splines(ecdf(dmd[[mod_vars[1]]])(gs[[mod_vars[1]]]),
+                                ecdf(dmd[[mod_vars[2]]])(gs[[mod_vars[2]]]),
+                                knots = md$s_knots, degree = md$s_degree,
+                                xbounds = 0:1, ybounds = 0:1) %>%
+                  as.data.frame() %>% as_tibble()
+
+            # compute deltas from bases
+            result <- select(gs, id)
+            for(cv in unique(deltas$clim_var)){
+                  for(tv in unique(deltas$topo_var)){
+                        dlt <- filter(deltas, topo_var == tv, clim_var == cv)$value
+                        result[[paste(cv, tv, sep = "_")]] <- apply(z, 1, function(x) sum(x * dlt))
+                  }
             }
+            return(result)
       }
-      return(result)
+
+      # process in chunks to stay within memory
+      nslice <- 10
+      gg <- g %>%
+            mutate(slice = rep(1:nslice, each = ceiling(nrow(.)/nslice))[1:nrow(.)]) %>%
+            split(.$slice) %>%
+            map_dfr(delt)
+      return(gg)
 }
 
 microclimate <- function(md, d, deltas, macro){
