@@ -110,8 +110,9 @@ tensor_splines <- function(x, y, xbounds = NULL, ybounds = NULL,
 }
 
 get_deltas <- function(md, # model metadata
-                       g, # predictor data
-                       samples){ # path to cmdstanr output csv
+                       g){ # predictor data
+
+      message("... computing deltas ...")
 
       log10inc <- function(x){ # change in log10 precip
             y <- rnorm(1)
@@ -135,23 +136,15 @@ get_deltas <- function(md, # model metadata
             mutate(bio1 = (bio1 - dmv$bio1_mean) / dmv$bio1_sd,
                    bio12 = (log10(bio12+1) - dmv$bio12_mean) / dmv$bio12_sd)
 
-      d <- read.csv(samples, comment.char = "#") %>%
-            mutate(i = 1:nrow(.)) %>%
-            gather(param, value, -i)
-
-      topo_mods1 <- c("mean", mod_vars)
-      params <- tibble(mod = rep(topo_mods1, length(topo_vars)),
-                       topo = rep(topo_vars, each = length(topo_mods1)))
-
-      deltas <- d %>%
-            filter(str_detect(param, "delta")) %>%
-            mutate(param = str_remove(param, "delta\\."),
-                   param = str_replace_all(param, "\\.", "_")) %>%
-            separate(param, c("param", "var"))
-
       n_bases <- (md$s_knots + md$s_degree - 1) ^ 2
 
-      deltas <- deltas %>%
+      deltas <- read.csv(topo_data("samples_full.csv"), comment.char = "#") %>%
+            select(contains("delta")) %>%
+            mutate(i = 1:nrow(.)) %>%
+            gather(param, value, -i) %>%
+            mutate(param = str_remove(param, "delta\\."),
+                   param = str_replace_all(param, "\\.", "_")) %>%
+            separate(param, c("param", "var")) %>%
             rename(clim_var = var, basis = param) %>%
             mutate(basis = as.integer(basis),
                    topo_var = topo_vars[ceiling(basis / n_bases)],
@@ -160,93 +153,57 @@ get_deltas <- function(md, # model metadata
                    clim_var = vars[as.integer(clim_var)]) %>%
             select(-i)
 
-      message("... computing deltas ...")
-      delt <- function(gs){
+      # generate basis functions
+      z <- tensor_splines(ecdf(dmd[[mod_vars[1]]])(g[[mod_vars[1]]]),
+                          ecdf(dmd[[mod_vars[2]]])(g[[mod_vars[2]]]),
+                          knots = md$s_knots, degree = md$s_degree,
+                          xbounds = 0:1, ybounds = 0:1) %>%
+            as.data.frame() %>% as_tibble()
 
-            # basis functions
-            z <- tensor_splines(ecdf(dmd[[mod_vars[1]]])(gs[[mod_vars[1]]]),
-                                ecdf(dmd[[mod_vars[2]]])(gs[[mod_vars[2]]]),
-                                knots = md$s_knots, degree = md$s_degree,
-                                xbounds = 0:1, ybounds = 0:1) %>%
-                  as.data.frame() %>% as_tibble() %>%
-                  mutate(id = gs$id) %>%
-                  gather(basis, basis_value, -id) %>%
-                  mutate(basis = as.integer(str_remove(basis, "V")))
-
-            # deltas
-            gg <- unique(deltas$basis) %>%
-                  map_dfr(function(b){
-                        expand_grid(filter(deltas, basis == b) %>% select(-basis),
-                                    filter(z, basis == b) %>% select(-basis)) %>%
-                              mutate(delta = value * basis_value,
-                                     basis = b)}) %>%
-                  group_by(clim_var, topo_var, id) %>% #, i) %>%
-                  summarize(delta = sum(delta), .groups = "drop") %>%
-                  left_join(gs, by = "id")
-
-            # rescale to native units
-            gg$delta_rscl <- NA
-            for(v in topo_vars) gg$delta_rscl[gg$topo_var == v] <-
-                  gg$delta[gg$topo_var == v] / dmv[[paste0(v, "_sd")]]
-            for(v in vars) gg$delta_rscl[gg$clim_var == v] <-
-                  gg$delta_rscl[gg$clim_var == v] * dmv[[paste0(v, "_sd")]]
-            gg <- gg %>%
-                  mutate(delta_rscl = ifelse(clim_var == "bio12", log10inc(delta_rscl), delta_rscl),
-                         delta_rscl = ifelse(clim_var == "bio12", delta_rscl * 100, delta_rscl),
-                         delta_rscl = ifelse(topo_var == "tpi", delta_rscl * 100, delta_rscl),
-                         bio1_rscl = bio1 * dmv$bio1_sd + dmv$bio1_mean,
-                         bio12_rscl = bio12 * dmv$bio12_sd + dmv$bio12_mean,
-                         bio12_rscl = 10^bio12_rscl - 1)
-            pb$tick()$print()
-            return(gg)
+      # compute deltas from bases
+      result <- select(g, id)
+      for(cv in unique(deltas$clim_var)){
+            for(tv in unique(deltas$topo_var)){
+                  dlt <- filter(deltas, topo_var == tv, clim_var == cv)$value
+                  result[[paste(cv, tv, sep = "_")]] <- apply(z, 1, function(x) sum(x * dlt))
+            }
       }
-
-      nslice <- 100 # chunk dataset to stay within memory
-      pb <- progress_estimated(nslice)
-      gg <- g %>%
-            mutate(slice = rep(1:nslice, each = ceiling(nrow(.)/nslice))[1:nrow(.)]) %>%
-            split(.$slice) %>%
-            map_dfr(delt)
-      return(gg)
+      return(result)
 }
 
 microclimate <- function(md, d, deltas, macro){
       message("... compiling bioclimate estimates ...")
+
       ddd <- readRDS(topo_data(basename(md$data_file)))
       mv <- ddd$mv
 
-      ddd <- d %>%
-            select(id, x, y, northness, eastness, windward = wind, tpi, bio5, bio6, bio12) %>%
-
-            # standardize
+      # standardize
+      d <- d %>%
+            select(id, x, y,
+                   northness, eastness, windward = wind, tpi,
+                   bio5, bio6, bio12) %>%
             mutate(bio5 = (bio5 - mv$bio5_mean) / mv$bio5_sd,
                    bio6 = (bio6 - mv$bio6_mean) / mv$bio6_sd,
                    bio12 = (log10(bio12 + 1) - mv$bio12_mean) / mv$bio12_sd,
                    northness = (northness - mv$northness_mean) / mv$northness_sd,
                    eastness = (eastness - mv$eastness_mean) / mv$eastness_sd,
                    windward = (windward - mv$windward_mean) / mv$windward_sd,
-                   tpi = (tpi - mv$tpi_mean) / mv$tpi_sd) %>%
+                   tpi = (tpi - mv$tpi_mean) / mv$tpi_sd)
 
-            # join to delta data
-            gather(topo_var, topo_value, northness:tpi) %>%
-            gather(clim_var, clim_value, bio5:bio12) %>%
-            filter(is.finite(topo_value)) %>%
-            left_join(deltas %>% select(id, clim_var, topo_var, delta),
-                      by = c("id", "topo_var", "clim_var"))
+      # add deltas
+      deltas <- select(deltas, -id)
+      for(i in 1:ncol(deltas)){
+            id <- str_split(colnames(deltas)[i], "_")[[1]]
+            d[[id[1]]] <- d[[id[1]]] + deltas[,i] * d[[id[2]]]
+      }
 
-      dd <- ddd %>%
-
-            # calculate microclimate
-            group_by(id, x, y, clim_var) %>%
-            summarize(microclim = clim_value[1] + sum(topo_value * delta), .groups = "drop") %>%
-            spread(clim_var, microclim) %>%
-
-            # destandardize
+      # destandardize
+      d <- d %>%
             mutate(h = bio5 * mv$bio5_sd + mv$bio5_mean,
                    c = bio6 * mv$bio6_sd + mv$bio6_mean,
                    m = 10 ^ (bio12 * mv$bio12_sd + mv$bio12_mean) - 1)
 
-      d <- left_join(d, select(dd, id, h:m), by = "id") %>%
+      d <- d %>%
             select(h:m) %>%
             as.matrix()
       topo <- macro[[1:3]]
@@ -264,13 +221,11 @@ microclimate <- function(md, d, deltas, macro){
 #' @param include_inputs Whether to return intermediate inputs in addition to topoclimate result (default FALSE)
 #'
 #' @return A raster stack of topoclimate variables, including "high_temperature" (in deg C), "low_temperature" (in deg C), and "moisture" (in mm).
-#' @references Kling, Baer, & Ackerly (2023), in review.
+#' @references Kling, Baer, & Ackerly (2024). A tree's view of the terrain. Ecography e07131, https://doi.org/10.1111/ecog.07131
 #' @export
 bioclimate <- function(dem, include_inputs = FALSE){
 
-      message("Calculating biogially effective topoclimate\n",
-              "(Note: you can safely ignore any 'attempt to apply non-function' error messages;\n",
-              "see https://github.com/rspatial/terra/issues/30 for more info on these gremlins.)")
+      message("Calculating biologically effective topoclimate")
 
       # enforce lat-lon crs
       if(!isLonLat(dem)){
@@ -290,7 +245,7 @@ bioclimate <- function(dem, include_inputs = FALSE){
 
       # calculate topoclimate estimates
       md <- readRDS(topo_data("model_metadata.rds"))[2,]
-      deltas <- get_deltas(md, d, topo_data("samples_full.csv"))
+      deltas <- get_deltas(md, d)
       topo <- microclimate(md, d, deltas, macro)
 
       if(include_inputs) topo <- stack(topo, ne, wind, tpi,

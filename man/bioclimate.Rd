@@ -18,5 +18,5 @@ A raster stack of topoclimate variables, including "high_temperature" (in deg C)
 This function produces estimates of biologically effective microclimate given a user-suppled digital elevation model (DEM). It is based on a model that leverages North American tree species occurrences as microclimate indicators. Estimates provided are for the posterior mode (penalized maximum likelihood) for model parameters.
 }
 \references{
-Kling, Baer, & Ackerly (2023), in review.
+Kling, Baer, & Ackerly (2024). A tree's view of the terrain. Ecography e07131, https://doi.org/10.1111/ecog.07131
 }
