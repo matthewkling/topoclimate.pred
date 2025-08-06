@@ -16,5 +16,6 @@ A raster layer of mTPI
 This function compuates multiscale topographic position index, sensu Theobald et al. (2015).
 }
 \references{
-DM Theobald, D Harrison-Atlas, WB Monahan, CM Albano, Ecologically-relevant maps of landforms and physiographic diversity for climate adaptation planning. PloS One e0143619 (2015)
+DM Theobald, D Harrison-Atlas, WB Monahan, CM Albano, Ecologically-relevant maps
+of landforms and physiographic diversity for climate adaptation planning. PloS One e0143619 (2015)
 }

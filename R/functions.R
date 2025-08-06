@@ -7,21 +7,22 @@
 #' @param dem RasterLayer representing elevation, in meters.
 #'
 #' @return A raster layer of mTPI
-#' @references DM Theobald, D Harrison-Atlas, WB Monahan, CM Albano, Ecologically-relevant maps of landforms and physiographic diversity for climate adaptation planning. PloS One e0143619 (2015)
+#' @references DM Theobald, D Harrison-Atlas, WB Monahan, CM Albano, Ecologically-relevant maps
+#'   of landforms and physiographic diversity for climate adaptation planning. PloS One e0143619 (2015)
 #' @export
 mtpi <- function(dem){
       message("... computing elevational position ...")
-      fun <- function(x){
+      average <- function(x){
             x <- na.omit(x)
             sum(x) / length(x)
       }
-      fw <- function(radius){
-            w <- focalWeight(dem, radius / 111.1, fillNA = T) # 111.1 km/deg latitude
-            w / w
+      f <- function(dem, radius){
+            w <- focalWeight(dem, radius / 111.1, fillNA = T) # 111.1 km/deg latitude (appx)
+            w <- w / w
+            if(length(w) == 1) return(dem)
+            focal(dem, w, average, pad = T)
       }
-      tpi <- (dem * 3 - focal(dem, fw(.5), fun, pad = T) -
-                    focal(dem, fw(.225), fun, pad = T) -
-                    focal(dem, fw(.1), fun, pad = T)) / 3
+      tpi <- (dem * 3 - f(dem, .5) - f(dem, .225) - f(dem, .1)) / 3
       setNames(tpi, "mTPI")
 }
 
